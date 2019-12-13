@@ -7,11 +7,11 @@ import com.lmax.disruptor.WaitStrategy;
 
 import ca.rdmss.disruptor.LMaxDisruptor;
 
-public class LMaxBlockingQueue extends LinkedBlockingQueue<Runnable> {
+public class LMaxBlockingQueue<T> extends LinkedBlockingQueue<T> {
 
 	private static final long serialVersionUID = -1903203266046230649L;
 
-	final private LMaxDisruptor<Runnable> disruptor;
+	final private LMaxDisruptor<T> disruptor;
 	
 	public LMaxBlockingQueue() {
 		this(new SleepingWaitStrategy());
@@ -19,7 +19,7 @@ public class LMaxBlockingQueue extends LinkedBlockingQueue<Runnable> {
 	
 	public LMaxBlockingQueue(WaitStrategy waitStrategy) {
 		super();
-		this.disruptor = new LMaxDisruptor<Runnable>(waitStrategy);
+		this.disruptor = new LMaxDisruptor<T>(waitStrategy);
 
 		disruptor.subscribeConsumer((event, sequence, endOfBatch)->{
 			super.offer(event.get());
@@ -29,12 +29,8 @@ public class LMaxBlockingQueue extends LinkedBlockingQueue<Runnable> {
 	}
 
 	@Override
-	public boolean offer(Runnable r) {
-		return disruptor.publish(r);
-	}
-
-	@Override
-	public void clear() {
-		//disruptor.shutdown();
+	public boolean offer(T r) {
+		disruptor.publish(r);
+		return true;
 	}
 }

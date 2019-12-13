@@ -12,7 +12,7 @@ public class LMaxProducer<T> {
 		this.ringBuffer = ringBuffer;
 	}
 
-	public boolean publish(T t) {
+	public long publish(T t) {
 		long sequence = ringBuffer.next();
 		try {
 			AtomicReference<T> wrapper = ringBuffer.get(sequence);
@@ -20,7 +20,7 @@ public class LMaxProducer<T> {
 		} finally {
 			ringBuffer.publish(sequence);
 		}
-		return true;
+		return sequence;
 	}
 
 }

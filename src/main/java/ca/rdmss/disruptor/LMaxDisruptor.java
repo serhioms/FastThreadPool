@@ -16,10 +16,11 @@ import com.lmax.disruptor.util.Util;
 
 public class LMaxDisruptor<T> {
 
-	static public int BUFFER_SIZE = 1024;
+	static public int BUFFER_SIZE = 1024*16; // 16K
 
 	protected Disruptor<AtomicReference<T>> disruptor;
 	protected RingBuffer<AtomicReference<T>> ringBuffer;
+	private volatile long lastSequence = Long.MAX_VALUE;
 
 	protected LMaxProducer<T> producer;
 
@@ -31,10 +32,14 @@ public class LMaxDisruptor<T> {
 	};
 	
 	public LMaxDisruptor() {
-		this(new SleepingWaitStrategy());
+		this(new SleepingWaitStrategy(), BUFFER_SIZE);
 	}  
 
 	public LMaxDisruptor(WaitStrategy waitStrategy) {
+		this(waitStrategy, BUFFER_SIZE);
+	}  
+
+	public LMaxDisruptor(WaitStrategy waitStrategy, int bufferSize) {
 		disruptor = new Disruptor<AtomicReference<T>>(
 				new EventFactory<AtomicReference<T>>() {
 					@Override
@@ -42,8 +47,8 @@ public class LMaxDisruptor<T> {
 						return new AtomicReference<T>();
 					}
 				},
-				Util.ceilingNextPowerOfTwo(BUFFER_SIZE), // size of the ring buffer must be power of 2
-				threadFactory, 							 // each disrupter runs in 1 thread
+				Util.ceilingNextPowerOfTwo(bufferSize), // size of the ring buffer must be power of 2
+				threadFactory, 							// each disrupter runs in 1 thread
 				ProducerType.MULTI,
 				waitStrategy
 				);
@@ -71,13 +76,23 @@ public class LMaxDisruptor<T> {
 
 	public void shutdown() {
 		disruptor.shutdown();
+		disruptor = null;
 	}
 
 	public void shutdown(long timeout, TimeUnit timeUnit) throws TimeoutException {
 		disruptor.shutdown(timeout, timeUnit);
+		disruptor = null;
 	}
 
-	public boolean publish(T t) {
-		return producer.publish(t);
+	public long publish(T t) {
+		return lastSequence = producer.publish(t);
+	}
+
+	public boolean isRunning() {
+		return ringBuffer.getCursor() != lastSequence;
+	}
+
+	public boolean isShutdown() {
+		return disruptor == null;
 	}
 }
